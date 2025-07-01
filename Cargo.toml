@@ -1,0 +1,10 @@
+[package]
+name = "rayca-gltf"
+version = "0.1.0"
+edition = "2024"
+authors = ["Antonio Caggiano <info@antoniocaggiano.eu>"]
+license = "MIT"
+
+[dependencies]
+rayca-math = { git = "https://github.com/Fahien/rayca-math" }
+rayca-util = { git = "https://github.com/Fahien/rayca-util" }
