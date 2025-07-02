@@ -2,14 +2,22 @@
 // Author: Antonio Caggiano <info@antoniocaggiano.eu>
 // SPDX-License-Identifier: MIT
 
+use crate::*;
+
 #[derive(Default)]
 pub struct MaterialBuilder {
     shader: u32,
+    texture: Handle<Texture>,
 }
 
 impl MaterialBuilder {
     pub fn shader(mut self, shader: u32) -> Self {
         self.shader = shader;
+        self
+    }
+
+    pub fn texture(mut self, texture: Handle<Texture>) -> Self {
+        self.texture = texture;
         self
     }
 

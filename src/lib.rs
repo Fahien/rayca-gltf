@@ -7,12 +7,14 @@ mod mesh;
 mod model;
 mod node;
 mod primitive;
+mod texture;
 
 pub use material::*;
 pub use mesh::*;
 pub use model::*;
 pub use node::*;
 pub use primitive::*;
+pub use texture::*;
 
 pub use rayca_math::*;
 pub use rayca_util::*;
