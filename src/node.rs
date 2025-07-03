@@ -6,10 +6,16 @@ use crate::*;
 
 #[derive(Clone, Default)]
 pub struct NodeBuilder {
+    trs: Trs,
     mesh: Handle<Mesh>,
 }
 
 impl NodeBuilder {
+    pub fn trs(mut self, trs: Trs) -> Self {
+        self.trs = trs;
+        self
+    }
+
     pub fn mesh(mut self, mesh: Handle<Mesh>) -> Self {
         self.mesh = mesh;
         self
@@ -17,6 +23,7 @@ impl NodeBuilder {
 
     pub fn build(self) -> Node {
         Node {
+            trs: self.trs,
             mesh: self.mesh,
             ..Default::default()
         }
