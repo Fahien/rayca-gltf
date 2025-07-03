@@ -24,13 +24,15 @@ impl MaterialBuilder {
     pub fn build(self) -> Material {
         Material {
             shader: self.shader,
+            texture: self.texture,
         }
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Material {
     pub shader: u32,
+    pub texture: Handle<Texture>,
 }
 
 impl Material {

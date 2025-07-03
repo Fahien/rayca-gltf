@@ -22,7 +22,7 @@ impl PrimitiveBuilder {
     }
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub struct Primitive {
     pub material: Handle<Material>,
 }

@@ -23,7 +23,7 @@ impl NodeBuilder {
     }
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub struct Node {
     pub trs: Trs,
     pub children: Vec<Handle<Node>>,

@@ -22,7 +22,7 @@ impl MeshBuilder {
     }
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub struct Mesh {
     pub primitive: Handle<Primitive>,
 }

@@ -4,13 +4,13 @@
 
 use crate::*;
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Image {}
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Sampler {}
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Texture {
     pub view: Handle<Image>,
     pub sampler: Handle<Sampler>,
