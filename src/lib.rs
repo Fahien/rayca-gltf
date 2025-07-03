@@ -2,6 +2,7 @@
 // Author: Antonio Caggiano <info@antoniocaggiano.eu>
 // SPDX-License-Identifier: MIT
 
+mod camera;
 mod material;
 mod mesh;
 mod model;
@@ -9,6 +10,7 @@ mod node;
 mod primitive;
 mod texture;
 
+pub use camera::*;
 pub use material::*;
 pub use mesh::*;
 pub use model::*;

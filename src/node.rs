@@ -8,6 +8,7 @@ use crate::*;
 pub struct NodeBuilder {
     trs: Trs,
     mesh: Handle<Mesh>,
+    camera: Handle<Camera>,
 }
 
 impl NodeBuilder {
@@ -21,10 +22,16 @@ impl NodeBuilder {
         self
     }
 
+    pub fn camera(mut self, camera: Handle<Camera>) -> Self {
+        self.camera = camera;
+        self
+    }
+
     pub fn build(self) -> Node {
         Node {
             trs: self.trs,
             mesh: self.mesh,
+            camera: self.camera,
             ..Default::default()
         }
     }
@@ -35,6 +42,7 @@ pub struct Node {
     pub trs: Trs,
     pub children: Vec<Handle<Node>>,
     pub mesh: Handle<Mesh>,
+    pub camera: Handle<Camera>,
 }
 
 impl Node {

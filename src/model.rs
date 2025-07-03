@@ -1,3 +1,7 @@
+// Copyright © 2022-2025
+// Author: Antonio Caggiano <info@antoniocaggiano.eu>
+// SPDX-License-Identifier: MIT
+
 use crate::*;
 
 #[derive(Default)]
@@ -11,4 +15,5 @@ pub struct Model {
     pub textures: Pack<Texture>,
     pub images: Pack<Image>,
     pub samplers: Pack<Sampler>,
+    pub cameras: Pack<Camera>,
 }
