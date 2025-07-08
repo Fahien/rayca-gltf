@@ -20,5 +20,5 @@ pub use primitive::*;
 pub use script::*;
 pub use texture::*;
 
-pub use rayca_math::*;
+pub use rayca_geometry::*;
 pub use rayca_util::*;
