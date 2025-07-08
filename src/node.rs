@@ -9,6 +9,8 @@ pub struct NodeBuilder {
     trs: Trs,
     mesh: Handle<Mesh>,
     camera: Handle<Camera>,
+
+    script: Handle<Script>,
 }
 
 impl NodeBuilder {
@@ -27,11 +29,17 @@ impl NodeBuilder {
         self
     }
 
+    pub fn script(mut self, script: Handle<Script>) -> Self {
+        self.script = script;
+        self
+    }
+
     pub fn build(self) -> Node {
         Node {
             trs: self.trs,
             mesh: self.mesh,
             camera: self.camera,
+            script: self.script,
             ..Default::default()
         }
     }
@@ -43,6 +51,7 @@ pub struct Node {
     pub children: Vec<Handle<Node>>,
     pub mesh: Handle<Mesh>,
     pub camera: Handle<Camera>,
+    pub script: Handle<Script>,
 }
 
 impl Node {

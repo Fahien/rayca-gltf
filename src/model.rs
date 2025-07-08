@@ -16,4 +16,5 @@ pub struct Model {
     pub images: Pack<Image>,
     pub samplers: Pack<Sampler>,
     pub cameras: Pack<Camera>,
+    pub scripts: Pack<Script>,
 }

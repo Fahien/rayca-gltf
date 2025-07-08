@@ -8,6 +8,7 @@ mod mesh;
 mod model;
 mod node;
 mod primitive;
+mod script;
 mod texture;
 
 pub use camera::*;
@@ -16,6 +17,7 @@ pub use mesh::*;
 pub use model::*;
 pub use node::*;
 pub use primitive::*;
+pub use script::*;
 pub use texture::*;
 
 pub use rayca_math::*;
