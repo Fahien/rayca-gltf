@@ -7,12 +7,18 @@ use crate::*;
 #[derive(Default)]
 pub struct MaterialBuilder {
     shader: u32,
+    color: Color,
     texture: Handle<Texture>,
 }
 
 impl MaterialBuilder {
     pub fn shader(mut self, shader: u32) -> Self {
         self.shader = shader;
+        self
+    }
+
+    pub fn color(mut self, color: Color) -> Self {
+        self.color = color;
         self
     }
 
@@ -24,6 +30,7 @@ impl MaterialBuilder {
     pub fn build(self) -> Material {
         Material {
             shader: self.shader,
+            color: self.color,
             texture: self.texture,
         }
     }
@@ -32,6 +39,7 @@ impl MaterialBuilder {
 #[derive(Default, Debug)]
 pub struct Material {
     pub shader: u32,
+    pub color: Color,
     pub texture: Handle<Texture>,
 }
 
