@@ -542,11 +542,11 @@ impl Model {
 
     fn load_nodes(&mut self, gltf: &gltf::Gltf) {
         // Load scene
-        let scene = gltf.scenes().next().unwrap();
-        self.scene = scene
+        let gscene = gltf.scenes().next().unwrap();
+        self.scene.children = gscene
             .nodes()
             .into_iter()
-            .map(|n| Handle::new(n.index() as _))
+            .map(|n| n.index().into())
             .collect();
 
         // Load nodes
@@ -583,7 +583,7 @@ mod test {
     fn load_images() {
         let model = Model::load_gltf_path("tests/model/suzanne/suzanne.gltf").unwrap();
         assert!(model.images.len() == 2);
-        assert!(!model.scene.is_empty());
+        assert!(!model.scene.children.is_empty());
     }
 
     #[test]

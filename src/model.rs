@@ -7,7 +7,7 @@ use crate::*;
 #[derive(Default)]
 // Model representation based on glTF spec
 pub struct Model {
-    pub scene: Vec<Handle<Node>>,
+    pub scene: Node,
     pub nodes: Pack<Node>,
     pub meshes: Pack<Mesh>,
     pub primitives: Pack<Primitive>,
@@ -21,7 +21,7 @@ pub struct Model {
 
 impl Model {
     pub fn extend(&mut self, other: Model) {
-        self.scene.extend(other.scene);
+        self.scene.children.extend(other.scene.children);
         self.nodes.extend(other.nodes);
         self.meshes.extend(other.meshes);
         self.primitives.extend(other.primitives);

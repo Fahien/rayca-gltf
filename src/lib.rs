@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: MIT
 
 mod camera;
+mod gltf_loader;
 mod image;
 mod material;
 mod mesh;
@@ -11,7 +12,6 @@ mod node;
 mod primitive;
 mod script;
 mod texture;
-mod gltf_loader;
 
 pub use camera::*;
 pub use image::*;
