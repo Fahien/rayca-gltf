@@ -6,25 +6,31 @@ use crate::*;
 
 #[derive(Clone, Default)]
 pub struct MeshBuilder {
-    primitive: Handle<Primitive>,
+    primitives: Vec<Handle<Primitive>>,
 }
 
 impl MeshBuilder {
     pub fn primitive(mut self, primitive: Handle<Primitive>) -> Self {
-        self.primitive = primitive;
+        self.primitives.clear();
+        self.primitives.push(primitive);
+        self
+    }
+
+    pub fn primitives(mut self, primitives: Vec<Handle<Primitive>>) -> Self {
+        self.primitives = primitives;
         self
     }
 
     pub fn build(self) -> Mesh {
         Mesh {
-            primitive: self.primitive,
+            primitives: self.primitives,
         }
     }
 }
 
 #[derive(Clone, Default, Debug)]
 pub struct Mesh {
-    pub primitive: Handle<Primitive>,
+    pub primitives: Vec<Handle<Primitive>>,
 }
 
 impl Mesh {

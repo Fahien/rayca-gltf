@@ -154,7 +154,7 @@ dependencies = [
 [[package]]
 name = "rayca-geometry"
 version = "0.1.0"
-source = "git+https://github.com/Fahien/rayca-geometry#c268793d190464e576dc492885bec555a59faa35"
+source = "git+https://github.com/Fahien/rayca-geometry#45110ad14196a4decdc0aa4cf238c211fac86fde"
 dependencies = [
  "rayca-math",
  "rayca-util",
@@ -172,7 +172,7 @@ dependencies = [
 [[package]]
 name = "rayca-math"
 version = "0.1.0"
-source = "git+https://github.com/Fahien/rayca-math#5a2992843f4ddef2ba1eb70f5a38414b48c2d9c5"
+source = "git+https://github.com/Fahien/rayca-math#7e1b841c0c07ac690dbe5508cc5e0d44df506ab4"
 dependencies = [
  "num-traits",
  "rand",
@@ -182,7 +182,7 @@ dependencies = [
 [[package]]
 name = "rayca-util"
 version = "0.1.0"
-source = "git+https://github.com/Fahien/rayca-util#d4e2747958997e7389e5573890cd95470e694286"
+source = "git+https://github.com/Fahien/rayca-util#459d17ff1060d42ffcaacbc9fd5ce8c96a4c13dd"
 dependencies = [
  "instant",
  "owo-colors",
