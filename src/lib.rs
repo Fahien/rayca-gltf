@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: MIT
 
 mod camera;
+mod image;
 mod material;
 mod mesh;
 mod model;
@@ -12,6 +13,7 @@ mod script;
 mod texture;
 
 pub use camera::*;
+pub use image::*;
 pub use material::*;
 pub use mesh::*;
 pub use model::*;

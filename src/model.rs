@@ -18,3 +18,18 @@ pub struct Model {
     pub cameras: Pack<Camera>,
     pub scripts: Pack<Script>,
 }
+
+impl Model {
+    pub fn extend(&mut self, other: Model) {
+        self.scene.extend(other.scene);
+        self.nodes.extend(other.nodes);
+        self.meshes.extend(other.meshes);
+        self.primitives.extend(other.primitives);
+        self.materials.extend(other.materials);
+        self.textures.extend(other.textures);
+        self.images.extend(other.images);
+        self.samplers.extend(other.samplers);
+        self.cameras.extend(other.cameras);
+        self.scripts.extend(other.scripts);
+    }
+}

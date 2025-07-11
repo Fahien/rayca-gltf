@@ -4,20 +4,47 @@
 
 use crate::*;
 
-#[derive(Default, Debug)]
-pub struct Image {}
-
-#[derive(Default, Debug)]
+#[derive(Debug, Default)]
 pub struct Sampler {}
 
-#[derive(Default, Debug)]
+#[derive(Default)]
+
+pub struct TextureBuilder {
+    pub image: Handle<Image>,
+    pub sampler: Handle<Sampler>,
+}
+
+impl TextureBuilder {
+    pub fn image(mut self, image: Handle<Image>) -> Self {
+        self.image = image;
+        self
+    }
+
+    pub fn sampler(mut self, sampler: Handle<Sampler>) -> Self {
+        self.sampler = sampler;
+        self
+    }
+
+    pub fn build(self) -> Texture {
+        Texture {
+            image: self.image,
+            sampler: self.sampler,
+        }
+    }
+}
+
+#[derive(Debug, Default)]
 pub struct Texture {
-    pub view: Handle<Image>,
+    pub image: Handle<Image>,
     pub sampler: Handle<Sampler>,
 }
 
 impl Texture {
-    pub fn new(view: Handle<Image>, sampler: Handle<Sampler>) -> Self {
-        Self { view, sampler }
+    pub fn builder() -> TextureBuilder {
+        TextureBuilder::default()
+    }
+
+    pub fn new(image: Handle<Image>, sampler: Handle<Sampler>) -> Self {
+        Self { image, sampler }
     }
 }
