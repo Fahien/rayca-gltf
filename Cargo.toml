@@ -9,3 +9,5 @@ license = "MIT"
 rayca-math = { git = "https://github.com/Fahien/rayca-math" }
 rayca-util = { git = "https://github.com/Fahien/rayca-util" }
 rayca-geometry = { git = "https://github.com/Fahien/rayca-geometry" }
+gltf = "1.4.*"
+base64 = "0.22.1"
