@@ -60,15 +60,20 @@ struct UriBuffers {
 }
 
 impl UriBuffers {
-    fn new(gltf: &gltf::Gltf, parent_dir: Option<&Path>) -> Result<Self, Box<dyn Error>> {
+    fn new(
+        gltf: &gltf::Gltf,
+        parent_dir: Option<&Path>,
+        assets: &Assets,
+    ) -> Result<Self, Box<dyn Error>> {
         Ok(Self {
-            data: Self::load_uri_buffers(gltf, parent_dir)?,
+            data: Self::load_uri_buffers(gltf, parent_dir, assets)?,
         })
     }
 
     fn load_uri_buffers(
         gltf: &gltf::Gltf,
         parent_dir: Option<&Path>,
+        assets: &Assets,
     ) -> Result<Vec<Vec<u8>>, Box<dyn Error>> {
         let mut uri_buffers = vec![];
         for buffer in gltf.buffers() {
@@ -81,11 +86,11 @@ impl UriBuffers {
                         base64::engine::general_purpose::STANDARD.decode(data_base64)?
                     } else if let Some(parent_dir) = &parent_dir {
                         let uri = parent_dir.join(uri);
-                        std::fs::read(uri)?
+                        assets.load(uri).data
                     } else {
-                        unimplemented!();
+                        assets.load(uri).data
                     };
-                    assert!(buffer.index() == uri_buffers.len());
+                    assert_eq!(buffer.index(), uri_buffers.len());
                     uri_buffers.push(data);
                 }
                 _ => unimplemented!(),
@@ -250,7 +255,11 @@ impl UriBuffers {
 }
 
 impl Model {
-    fn load_gltf(gltf: gltf::Gltf, path: Option<&Path>) -> Result<Self, Box<dyn Error>> {
+    fn load_gltf(
+        gltf: gltf::Gltf,
+        path: Option<&Path>,
+        assets: &Assets,
+    ) -> Result<Self, Box<dyn Error>> {
         let mut timer = Timer::new();
 
         let path_str = if let Some(path) = path {
@@ -269,7 +278,7 @@ impl Model {
         ret.load_images(&gltf, parent_dir);
         ret.load_textures(&gltf);
         ret.load_materials(&gltf)?;
-        let uri_buffers = UriBuffers::new(&gltf, parent_dir)?;
+        let uri_buffers = UriBuffers::new(&gltf, parent_dir, assets)?;
         ret.load_meshes(&gltf, &uri_buffers)?;
         ret.load_cameras(&gltf);
         ret.load_nodes(&gltf);
@@ -282,14 +291,18 @@ impl Model {
         Ok(ret)
     }
 
-    pub fn load_gltf_path<P: AsRef<Path>>(path: P) -> Result<Self, Box<dyn Error>> {
-        let gltf = gltf::Gltf::open(path.as_ref())?;
-        Self::load_gltf(gltf, Some(path.as_ref()))
+    pub fn load_gltf_path<P: AsRef<Path>>(
+        path: P,
+        assets: &Assets,
+    ) -> Result<Self, Box<dyn Error>> {
+        let data = assets.load(path.as_ref()).data;
+        let gltf = gltf::Gltf::from_slice(&data)?;
+        Self::load_gltf(gltf, Some(path.as_ref()), assets)
     }
 
-    pub fn load_gltf_data(data: &[u8]) -> Result<Self, Box<dyn Error>> {
+    pub fn load_gltf_data(data: &[u8], assets: &Assets) -> Result<Self, Box<dyn Error>> {
         let gltf = gltf::Gltf::from_slice(data)?;
-        Self::load_gltf(gltf, None)
+        Self::load_gltf(gltf, None, assets)
     }
 
     pub fn load_images(&mut self, gltf: &gltf::Gltf, parent_dir: Option<&Path>) {
@@ -567,28 +580,31 @@ impl Model {
 
 #[cfg(test)]
 mod test {
-    use crate::Model;
+    use crate::*;
 
     #[test]
     fn load_gltf() {
-        assert!(Model::load_gltf_path("test").is_err());
+        let assets = Assets::new();
+        assert!(Model::load_gltf_path("test", &assets).is_err());
 
         let path = "tests/model/box/box.gltf";
-        if let Err(err) = Model::load_gltf_path(path) {
+        if let Err(err) = Model::load_gltf_path(path, &assets) {
             panic!("Failed to load \"{}\": {}", path, err);
         }
     }
 
     #[test]
     fn load_images() {
-        let model = Model::load_gltf_path("tests/model/suzanne/suzanne.gltf").unwrap();
+        let assets = Assets::new();
+        let model = Model::load_gltf_path("tests/model/suzanne/suzanne.gltf", &assets).unwrap();
         assert!(model.images.len() == 2);
         assert!(!model.scene.children.is_empty());
     }
 
     #[test]
     fn load_phong() {
-        let model = Model::load_gltf_path("tests/model/box/box-phong.gltf").unwrap();
+        let assets = Assets::new();
+        let model = Model::load_gltf_path("tests/model/box/box-phong.gltf", &assets).unwrap();
         assert!(model.materials.len() == 1);
     }
 }
