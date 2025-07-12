@@ -6,8 +6,8 @@ authors = ["Antonio Caggiano <info@antoniocaggiano.eu>"]
 license = "MIT"
 
 [dependencies]
-rayca-math = { git = "https://github.com/Fahien/rayca-math" }
-rayca-util = { git = "https://github.com/Fahien/rayca-util" }
-rayca-geometry = { git = "https://github.com/Fahien/rayca-geometry" }
+rayca-math = { git = "https://github.com/fahien/rayca-math.git" }
+rayca-util = { git = "https://github.com/fahien/rayca-util.git" }
+rayca-geometry = { git = "https://github.com/fahien/rayca-geometry.git" }
 gltf = "1.4.*"
 base64 = "0.22.1"
