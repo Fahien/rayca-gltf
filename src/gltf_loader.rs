@@ -275,6 +275,8 @@ impl Model {
         };
 
         let mut ret = Self::default();
+        ret.load_buffers(&gltf, parent_dir, assets);
+        ret.load_buffer_views(&gltf);
         ret.load_images(&gltf, parent_dir);
         ret.load_textures(&gltf);
         ret.load_materials(&gltf)?;
@@ -303,6 +305,35 @@ impl Model {
     pub fn load_gltf_data(data: &[u8], assets: &Assets) -> Result<Self, Box<dyn Error>> {
         let gltf = gltf::Gltf::from_slice(data)?;
         Self::load_gltf(gltf, None, assets)
+    }
+
+    pub fn load_buffers(&mut self, gltf: &gltf::Gltf, parent_dir: Option<&Path>, assets: &Assets) {
+        for buffer in gltf.buffers() {
+            match buffer.source() {
+                gltf::buffer::Source::Uri(uri) => {
+                    const DATA_URI: &str = "data:application/octet-stream;base64,";
+
+                    let data = if uri.starts_with(DATA_URI) {
+                        let (_, data_base64) = uri.split_at(DATA_URI.len());
+                        base64::engine::general_purpose::STANDARD
+                            .decode(data_base64)
+                            .expect("Failed to decode base64 buffer data")
+                    } else if let Some(parent_dir) = parent_dir {
+                        let uri = parent_dir.join(uri);
+                        assets.load(uri).data
+                    } else {
+                        assets.load(uri).data
+                    };
+                    assert_eq!(buffer.index(), self.buffers.len());
+                    self.buffers.push(Buffer::new(data));
+                }
+                _ => unimplemented!(),
+            }
+        }
+    }
+
+    pub fn load_buffer_views(&mut self, gltf: &gltf::Gltf) {
+        self.buffer_views = gltf.views().map(BufferView::from).collect();
     }
 
     pub fn load_images(&mut self, gltf: &gltf::Gltf, parent_dir: Option<&Path>) {
@@ -575,6 +606,31 @@ impl Model {
             .iter_mut()
             .rev()
             .find(|node| node.camera.is_valid())
+    }
+}
+
+impl From<gltf::buffer::Target> for BufferViewTarget {
+    fn from(value: gltf::buffer::Target) -> Self {
+        match value {
+            gltf::buffer::Target::ArrayBuffer => BufferViewTarget::ArrayBuffer,
+            gltf::buffer::Target::ElementArrayBuffer => BufferViewTarget::ElementArrayBuffer,
+        }
+    }
+}
+
+impl From<gltf::buffer::View<'_>> for BufferView {
+    fn from(value: gltf::buffer::View) -> Self {
+        let target = value
+            .target()
+            .map_or(BufferViewTarget::None, BufferViewTarget::from);
+
+        Self::new(
+            value.buffer().index().into(),
+            value.offset(),
+            value.length(),
+            value.stride().unwrap_or_default(),
+            target,
+        )
     }
 }
 

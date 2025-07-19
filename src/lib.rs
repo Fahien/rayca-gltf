@@ -2,6 +2,7 @@
 // Author: Antonio Caggiano <info@antoniocaggiano.eu>
 // SPDX-License-Identifier: MIT
 
+mod buffer;
 mod camera;
 mod gltf_loader;
 mod image;
@@ -13,6 +14,7 @@ mod primitive;
 mod script;
 mod texture;
 
+pub use buffer::*;
 pub use camera::*;
 pub use image::*;
 pub use material::*;

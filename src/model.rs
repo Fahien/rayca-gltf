@@ -8,6 +8,8 @@ use crate::*;
 // Model representation based on glTF spec
 pub struct Model {
     pub scene: Node,
+    pub buffers: Pack<Buffer>,
+    pub buffer_views: Pack<BufferView>,
     pub nodes: Pack<Node>,
     pub meshes: Pack<Mesh>,
     pub primitives: Pack<Primitive>,
@@ -21,6 +23,8 @@ pub struct Model {
 
 impl Model {
     pub fn extend(&mut self, other: Model) {
+        self.buffers.extend(other.buffers);
+        self.buffer_views.extend(other.buffer_views);
         self.scene.children.extend(other.scene.children);
         self.nodes.extend(other.nodes);
         self.meshes.extend(other.meshes);
