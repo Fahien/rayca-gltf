@@ -103,3 +103,31 @@ impl Node {
         Self::default()
     }
 }
+
+impl std::fmt::Display for Node {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{{ \"name\": \"{}\", \"translation\": {}, \"rotation\": {}, \"scale\": {}",
+            self.name, self.trs.translation, self.trs.rotation, self.trs.scale
+        )?;
+        if self.camera.is_valid() {
+            write!(f, ", \"camera\": {}", self.camera.id)?;
+        }
+        if self.mesh.is_valid() {
+            write!(f, ", \"mesh\": {}", self.mesh.id)?;
+        }
+        if !self.children.is_empty() {
+            write!(f, ", \"children\": [")?;
+            for (i, child) in self.children.iter().enumerate() {
+                if i > 0 {
+                    write!(f, ", ")?;
+                }
+                write!(f, "{}", child.id)?;
+            }
+            write!(f, "]")?;
+        }
+        write!(f, " }}")?;
+        Ok(())
+    }
+}

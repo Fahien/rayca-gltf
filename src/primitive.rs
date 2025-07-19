@@ -17,29 +17,6 @@ pub enum PrimitiveMode {
     TriangleFan = 6,
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-#[repr(u32)]
-pub enum ComponentType {
-    /// Byte
-    I8 = 5120,
-
-    #[default]
-    /// Unsigned byte
-    U8 = 5121,
-
-    /// Short
-    I16 = 5122,
-
-    /// Unsigned short
-    U16 = 5123,
-
-    /// Unsigned int
-    U32 = 5125,
-
-    /// Float
-    F32 = 5126,
-}
-
 #[derive(Clone, Default)]
 
 pub struct PrimitiveIndicesBuilder {
@@ -76,6 +53,10 @@ pub struct PrimitiveIndices {
 impl PrimitiveIndices {
     pub fn builder() -> PrimitiveIndicesBuilder {
         PrimitiveIndicesBuilder::default()
+    }
+
+    pub fn get_index_count(&self) -> usize {
+        self.indices.len() / self.index_type.get_size()
     }
 }
 

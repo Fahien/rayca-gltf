@@ -80,3 +80,37 @@ impl Material {
         MaterialBuilder::default()
     }
 }
+
+impl std::fmt::Display for Material {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{{ \"pbrMetallicRoughness\": {{ \"baseColorFactor\": {},\"metallicFactor\": {}, \"roughnessFactor\": {}",
+            self.color, self.metallic_factor, self.roughness_factor,
+        )?;
+
+        if self.albedo.is_valid() {
+            write!(
+                f,
+                ", \"baseColorTexture\": {{ \"index\": {} }}",
+                self.albedo.id
+            )?;
+        }
+        if self.normal.is_valid() {
+            write!(
+                f,
+                ", \"normalTexture\": {{ \"index\": {} }}",
+                self.normal.id
+            )?;
+        }
+        if self.metallic_roughness.is_valid() {
+            write!(
+                f,
+                ", \"metallicRoughnessTexture\": {{ \"index\": {} }}",
+                self.metallic_roughness.id
+            )?;
+        }
+        write!(f, "}} }}")?;
+        Ok(())
+    }
+}

@@ -4,9 +4,9 @@
 
 use crate::*;
 
-#[derive(Default)]
 // Model representation based on glTF spec
 pub struct Model {
+    pub name: String,
     pub scene: Node,
     pub buffers: Pack<Buffer>,
     pub buffer_views: Pack<BufferView>,
@@ -21,19 +21,38 @@ pub struct Model {
     pub scripts: Pack<Script>,
 }
 
+impl Default for Model {
+    fn default() -> Self {
+        Self {
+            name: "Unknown".to_string(),
+            scene: Node::default(),
+            buffers: Pack::default(),
+            buffer_views: Pack::default(),
+            nodes: Pack::default(),
+            meshes: Pack::default(),
+            primitives: Pack::default(),
+            materials: Pack::default(),
+            textures: Pack::default(),
+            images: Pack::default(),
+            samplers: Pack::default(),
+            cameras: Pack::default(),
+            scripts: Pack::default(),
+        }
+    }
+}
+
 impl Model {
-    pub fn extend(&mut self, other: Model) {
-        self.buffers.extend(other.buffers);
-        self.buffer_views.extend(other.buffer_views);
-        self.scene.children.extend(other.scene.children);
-        self.nodes.extend(other.nodes);
-        self.meshes.extend(other.meshes);
-        self.primitives.extend(other.primitives);
-        self.materials.extend(other.materials);
-        self.textures.extend(other.textures);
-        self.images.extend(other.images);
-        self.samplers.extend(other.samplers);
-        self.cameras.extend(other.cameras);
-        self.scripts.extend(other.scripts);
+    pub fn new<S: Into<String>>(name: S) -> Self {
+        let mut model = Self::default();
+        model.name = name.into();
+        model
+    }
+
+    pub fn find_image_handle_by_uri(&self, uri: &str) -> Handle<Image> {
+        self.images
+            .iter()
+            .position(|image| image.uri == uri)
+            .map(Handle::from)
+            .unwrap_or_default()
     }
 }

@@ -2,7 +2,7 @@
 // Author: Antonio Caggiano <info@antoniocaggiano.eu>
 // SPDX-License-Identifier: MIT
 
-use std::{error::Error, path::Path};
+use std::{collections::HashMap, error::Error, mem::offset_of, path::Path};
 
 use base64::Engine;
 use rayca_math::Trs;
@@ -275,8 +275,6 @@ impl Model {
         };
 
         let mut ret = Self::default();
-        ret.load_buffers(&gltf, parent_dir, assets);
-        ret.load_buffer_views(&gltf);
         ret.load_images(&gltf, parent_dir);
         ret.load_textures(&gltf);
         ret.load_materials(&gltf)?;
@@ -305,35 +303,6 @@ impl Model {
     pub fn load_gltf_data(data: &[u8], assets: &Assets) -> Result<Self, Box<dyn Error>> {
         let gltf = gltf::Gltf::from_slice(data)?;
         Self::load_gltf(gltf, None, assets)
-    }
-
-    pub fn load_buffers(&mut self, gltf: &gltf::Gltf, parent_dir: Option<&Path>, assets: &Assets) {
-        for buffer in gltf.buffers() {
-            match buffer.source() {
-                gltf::buffer::Source::Uri(uri) => {
-                    const DATA_URI: &str = "data:application/octet-stream;base64,";
-
-                    let data = if uri.starts_with(DATA_URI) {
-                        let (_, data_base64) = uri.split_at(DATA_URI.len());
-                        base64::engine::general_purpose::STANDARD
-                            .decode(data_base64)
-                            .expect("Failed to decode base64 buffer data")
-                    } else if let Some(parent_dir) = parent_dir {
-                        let uri = parent_dir.join(uri);
-                        assets.load(uri).data
-                    } else {
-                        assets.load(uri).data
-                    };
-                    assert_eq!(buffer.index(), self.buffers.len());
-                    self.buffers.push(Buffer::new(data));
-                }
-                _ => unimplemented!(),
-            }
-        }
-    }
-
-    pub fn load_buffer_views(&mut self, gltf: &gltf::Gltf) {
-        self.buffer_views = gltf.views().map(BufferView::from).collect();
     }
 
     pub fn load_images(&mut self, gltf: &gltf::Gltf, parent_dir: Option<&Path>) {
@@ -606,6 +575,272 @@ impl Model {
             .iter_mut()
             .rev()
             .find(|node| node.camera.is_valid())
+    }
+
+    /// Saves the model as a glTF file in the current working directory.
+    /// Two files will be named after the model's name with a `.gltf` extension
+    /// and a `.bin` extension.
+    pub fn save_gltf<P: AsRef<Path>>(&self, dir: P) -> std::fmt::Result {
+        let store_model = StoreModel::new(self);
+
+        let bin_path = dir.as_ref().join(&store_model.buffer.uri);
+        std::fs::write(bin_path, &store_model.buffer.data)
+            .expect("Failed to write binary buffer file");
+
+        let mut json_string = String::default();
+        use std::fmt::Write;
+        write!(
+            &mut json_string,
+            "{{ \"asset\": {{ \"version\": \"2.0\" }},"
+        )?;
+        write!(&mut json_string, "{store_model}")?;
+
+        // Images
+        write!(&mut json_string, ", \"images\": [")?;
+        for (i, image) in self.images.iter().enumerate() {
+            if i > 0 {
+                write!(&mut json_string, ",")?;
+            }
+            write!(&mut json_string, "{image}")?;
+        }
+        write!(&mut json_string, "]")?;
+
+        // Textures
+        write!(&mut json_string, ", \"textures\": [")?;
+        for (i, texture) in self.textures.iter().enumerate() {
+            if i > 0 {
+                write!(&mut json_string, ",")?;
+            }
+            write!(&mut json_string, "{texture}")?;
+        }
+        write!(&mut json_string, "]")?;
+
+        // Materials
+        write!(&mut json_string, ", \"materials\": [")?;
+        for (i, material) in self.materials.iter().enumerate() {
+            if i > 0 {
+                write!(&mut json_string, ",")?;
+            }
+            write!(&mut json_string, "{material}")?;
+        }
+        write!(&mut json_string, "]")?;
+
+        write!(&mut json_string, ", \"nodes\": [")?;
+        for (i, node) in self.nodes.iter().enumerate() {
+            if i > 0 {
+                write!(&mut json_string, ",")?;
+            }
+            write!(&mut json_string, "{node}")?;
+        }
+
+        write!(&mut json_string, "]")?;
+        write!(&mut json_string, ", \"scenes\": [ {{ \"nodes\": [")?;
+        for (i, child) in self.scene.children.iter().enumerate() {
+            if i > 0 {
+                write!(&mut json_string, ",")?;
+            }
+            write!(&mut json_string, "{}", child.id)?;
+        }
+        write!(&mut json_string, "] }} ]")?;
+
+        write!(&mut json_string, "}}")?;
+
+        let file_name = format!("{}.gltf", self.name);
+        let file_path = dir.as_ref().join(file_name);
+        std::fs::write(file_path, json_string).expect("Failed to write glTF file");
+        Ok(())
+    }
+}
+
+#[derive(Default)]
+struct StorePrimitive {
+    attributes: HashMap<gltf::mesh::Semantic, Handle<Accessor>>,
+    indices: Handle<Accessor>,
+    material: Handle<Material>,
+}
+
+fn semantic_to_string(semantic: &gltf::mesh::Semantic) -> &'static str {
+    match semantic {
+        gltf::mesh::Semantic::Positions => "POSITION",
+        gltf::mesh::Semantic::Normals => "NORMAL",
+        gltf::mesh::Semantic::Tangents => "TANGENT",
+        gltf::mesh::Semantic::TexCoords(_) => "TEXCOORD_0",
+        gltf::mesh::Semantic::Colors(_) => "COLOR_0",
+        _ => "UNKNOWN",
+    }
+}
+
+impl std::fmt::Display for StorePrimitive {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{{ \"attributes\": {{")?;
+        for (i, (semantic, accessor)) in self.attributes.iter().enumerate() {
+            if i > 0 {
+                write!(f, ",")?;
+            }
+            write!(f, "\"{}\": {}", semantic_to_string(semantic), accessor.id)?;
+        }
+        write!(f, "}}, \"indices\": {}", self.indices.id)?;
+        if self.material.is_valid() {
+            write!(f, ", \"material\": {}", self.material.id)?;
+        }
+        write!(f, "}}")
+    }
+}
+
+#[derive(Default)]
+struct StoreModel {
+    /// The main buffer will contain vertices and indices, this is going to be saved as `.bin`
+    buffer: Buffer,
+    buffer_views: Pack<BufferView>,
+    accessors: Pack<Accessor>,
+    primitives: Pack<StorePrimitive>,
+    meshes: Pack<Mesh>,
+}
+
+impl StoreModel {
+    fn new(model: &Model) -> Self {
+        let mut store_model = Self::default();
+        store_model.buffer.uri = format!("{}.bin", model.name);
+        store_model.meshes = model.meshes.clone();
+
+        // Generate primitives for infomation to file, while appending vertex data to the main buffer
+        for primitive in model.primitives.iter() {
+            let mut store_primitive = StorePrimitive::default();
+            store_primitive.material = primitive.material;
+
+            // Buffer views should be created for vertices and indices
+            let buffer_view = store_model.buffer.extend_from_bytes(
+                &primitive.vertices,
+                std::mem::size_of::<Vertex>(),
+                BufferViewTarget::ArrayBuffer,
+            );
+            let vertex_buffer_handle = store_model.buffer_views.push(buffer_view);
+
+            // Accessors are generated here
+            let vertex_count = primitive.vertices.len();
+            let position_accessor = Accessor::new(
+                vertex_buffer_handle,
+                0,
+                ComponentType::F32,
+                vertex_count,
+                AccessorType::Vec3,
+            );
+            let position_accessor_handle = store_model.accessors.push(position_accessor);
+            store_primitive
+                .attributes
+                .insert(gltf::mesh::Semantic::Positions, position_accessor_handle);
+
+            let color_accessor = Accessor::new(
+                vertex_buffer_handle,
+                offset_of!(Vertex, ext.color) as usize,
+                ComponentType::F32,
+                vertex_count,
+                AccessorType::Vec4,
+            );
+            let color_accessor_handle = store_model.accessors.push(color_accessor);
+            store_primitive
+                .attributes
+                .insert(gltf::mesh::Semantic::Colors(0), color_accessor_handle);
+
+            let normal_accessor = Accessor::new(
+                vertex_buffer_handle,
+                offset_of!(Vertex, ext.normal) as usize,
+                ComponentType::F32,
+                vertex_count,
+                AccessorType::Vec3,
+            );
+            let normal_accessor_handle = store_model.accessors.push(normal_accessor);
+            store_primitive
+                .attributes
+                .insert(gltf::mesh::Semantic::Normals, normal_accessor_handle);
+
+            let uv_accessor = Accessor::new(
+                vertex_buffer_handle,
+                offset_of!(Vertex, ext.uv) as usize,
+                ComponentType::F32,
+                vertex_count,
+                AccessorType::Vec2,
+            );
+            let uv_accessor_handle = store_model.accessors.push(uv_accessor);
+            store_primitive
+                .attributes
+                .insert(gltf::mesh::Semantic::TexCoords(0), uv_accessor_handle);
+
+            if let Some(indices) = &primitive.indices {
+                let buffer_view = store_model.buffer.extend_from_bytes(
+                    &indices.indices,
+                    0,
+                    BufferViewTarget::ElementArrayBuffer,
+                );
+                let index_buffer_handle = store_model.buffer_views.push(buffer_view);
+
+                let index_accessor = Accessor::new(
+                    index_buffer_handle,
+                    0,
+                    indices.index_type.into(),
+                    indices.get_index_count(),
+                    AccessorType::Scalar,
+                );
+                let index_accessor_handle = store_model.accessors.push(index_accessor);
+                store_primitive.indices = index_accessor_handle;
+            }
+
+            store_model.primitives.push(store_primitive);
+        }
+
+        store_model
+    }
+}
+
+impl std::fmt::Display for StoreModel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "\"buffers\": [")?;
+        write!(
+            f,
+            "{{ \"byteLength\": {}, \"uri\": \"{}\" }}",
+            self.buffer.data.len(),
+            self.buffer.uri
+        )?;
+        write!(f, "],")?;
+
+        write!(f, "\"bufferViews\": [")?;
+        for (i, buffer_view) in self.buffer_views.iter().enumerate() {
+            if i > 0 {
+                write!(f, ",")?;
+            }
+            write!(f, "{buffer_view}",)?;
+        }
+        write!(f, "],")?;
+
+        write!(f, "\"accessors\": [")?;
+        for (i, accessor) in self.accessors.iter().enumerate() {
+            if i > 0 {
+                write!(f, ",")?;
+            }
+            write!(f, "{accessor}",)?;
+        }
+        write!(f, "],")?;
+
+        write!(f, "\"meshes\": [")?;
+
+        for (i, mesh) in self.meshes.iter().enumerate() {
+            if i > 0 {
+                write!(f, ",")?;
+            }
+            write!(f, "{{")?;
+            write!(f, "\"primitives\": [")?;
+            for (j, primitive) in mesh.primitives.iter().enumerate() {
+                if j > 0 {
+                    write!(f, ",")?;
+                }
+                let store_primitive = self.primitives.get(primitive.id.into()).unwrap();
+                write!(f, "{store_primitive}")?;
+            }
+            write!(f, "]")?;
+            write!(f, "}}")?;
+        }
+
+        write!(f, "]")
     }
 }
 

@@ -48,3 +48,22 @@ impl Texture {
         Self { image, sampler }
     }
 }
+
+impl std::fmt::Display for Texture {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{{")?;
+        let mut need_comma = false;
+        if self.image.is_valid() {
+            write!(f, "\"source\": {}", self.image.id)?;
+            need_comma = true;
+        }
+        if self.sampler.is_valid() {
+            if need_comma {
+                write!(f, ", ")?;
+            }
+            write!(f, "\"sampler\": {}", self.sampler.id)?;
+        }
+        write!(f, "}}")?;
+        Ok(())
+    }
+}
