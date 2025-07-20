@@ -86,9 +86,9 @@ impl UriBuffers {
                         base64::engine::general_purpose::STANDARD.decode(data_base64)?
                     } else if let Some(parent_dir) = &parent_dir {
                         let uri = parent_dir.join(uri);
-                        assets.load(uri).data
+                        assets.load(uri).into_bytes()
                     } else {
-                        assets.load(uri).data
+                        assets.load(uri).into_bytes()
                     };
                     assert_eq!(buffer.index(), uri_buffers.len());
                     uri_buffers.push(data);
@@ -295,7 +295,7 @@ impl Model {
         path: P,
         assets: &Assets,
     ) -> Result<Self, Box<dyn Error>> {
-        let data = assets.load(path.as_ref()).data;
+        let data = assets.load(path.as_ref()).into_bytes();
         let gltf = gltf::Gltf::from_slice(&data)?;
         Self::load_gltf(gltf, Some(path.as_ref()), assets)
     }

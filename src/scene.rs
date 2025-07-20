@@ -2,7 +2,7 @@
 // Author: Antonio Caggiano <info@antoniocaggiano.eu>
 // SPDX-License-Identifier: MIT
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use serde::*;
 
@@ -34,6 +34,12 @@ impl Scene {
         let mut scene = Self::default();
         scene.name = name.into();
         scene
+    }
+
+    pub fn load_glx_path<P: AsRef<Path>>(glx_path: P, assets: &Assets) -> Self {
+        let asset = assets.load(glx_path.as_ref());
+        let data = asset.to_string();
+        serde_json::from_str(&data).expect("Failed to load GLX file")
     }
 
     pub fn get_uri(&self) -> PathBuf {

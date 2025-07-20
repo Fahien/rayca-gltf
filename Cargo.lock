@@ -1119,7 +1119,7 @@ dependencies = [
 [[package]]
 name = "rayca-util"
 version = "0.1.0"
-source = "git+https://github.com/fahien/rayca-util.git#f31b100d8b95bd5b46bdbd0f5d78421fe18174d0"
+source = "git+https://github.com/fahien/rayca-util.git#d4d8e12e2693ac1d127eec94d12f2d59ddb7f439"
 dependencies = [
  "instant",
  "owo-colors",
