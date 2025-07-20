@@ -16,6 +16,7 @@ pub struct Scene {
     pub name: String,
     pub nodes: Pack<Node>,
     pub models: Pack<ModelSource>,
+    pub root: Node,
 }
 
 impl Default for Scene {
@@ -25,6 +26,7 @@ impl Default for Scene {
             name: "Unknown".to_string(),
             nodes: Pack::default(),
             models: Pack::default(),
+            root: Node::default(),
         }
     }
 }
@@ -44,6 +46,10 @@ impl Scene {
 
     pub fn get_uri(&self) -> PathBuf {
         self.dir.join(format!("{}.glx", self.name))
+    }
+
+    pub fn get_node(&self, handle: Handle<Node>) -> Option<&Node> {
+        self.nodes.get(handle)
     }
 }
 

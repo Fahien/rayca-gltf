@@ -6,9 +6,9 @@ use serde::*;
 
 use crate::*;
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct NodeBuilder {
-    name: String,
+    name: Option<String>,
     trs: Trs,
     children: Vec<Handle<Node>>,
     mesh: Option<Handle<Mesh>>,
@@ -17,23 +17,9 @@ pub struct NodeBuilder {
     model: Option<Handle<ModelSource>>,
 }
 
-impl Default for NodeBuilder {
-    fn default() -> Self {
-        Self {
-            name: "Unknown".to_string(),
-            trs: Trs::default(),
-            children: Vec::new(),
-            mesh: None,
-            camera: None,
-            script: None,
-            model: None,
-        }
-    }
-}
-
 impl NodeBuilder {
     pub fn name<S: Into<String>>(mut self, name: S) -> Self {
-        self.name = name.into();
+        self.name = Some(name.into());
         self
     }
 
@@ -83,11 +69,12 @@ impl NodeBuilder {
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Node {
-    pub name: String,
+    pub name: Option<String>,
 
     #[serde(flatten)]
     pub trs: Trs,
 
+    #[serde(default)]
     pub children: Vec<Handle<Node>>,
 
     pub mesh: Option<Handle<Mesh>>,
@@ -102,7 +89,7 @@ pub struct Node {
 impl Default for Node {
     fn default() -> Self {
         Self {
-            name: "Unknown".to_string(),
+            name: None,
             trs: Trs::default(),
             children: Vec::new(),
             mesh: None,
@@ -127,9 +114,12 @@ impl std::fmt::Display for Node {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{{ \"name\": \"{}\", \"translation\": {}, \"rotation\": {}, \"scale\": {}",
-            self.name, self.trs.translation, self.trs.rotation, self.trs.scale
+            "{{ \"translation\": {}, \"rotation\": {}, \"scale\": {}",
+            self.trs.translation, self.trs.rotation, self.trs.scale
         )?;
+        if let Some(name) = &self.name {
+            write!(f, ", \"name\": \"{}\"", name)?;
+        }
         if let Some(camera) = &self.camera {
             write!(f, ", \"camera\": {}", camera.id)?;
         }
