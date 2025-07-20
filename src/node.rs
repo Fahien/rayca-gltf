@@ -2,6 +2,8 @@
 // Author: Antonio Caggiano <info@antoniocaggiano.eu>
 // SPDX-License-Identifier: MIT
 
+use serde::*;
+
 use crate::*;
 
 #[derive(Clone)]
@@ -9,9 +11,10 @@ pub struct NodeBuilder {
     name: String,
     trs: Trs,
     children: Vec<Handle<Node>>,
-    mesh: Handle<Mesh>,
-    camera: Handle<Camera>,
-    script: Handle<Script>,
+    mesh: Option<Handle<Mesh>>,
+    camera: Option<Handle<Camera>>,
+    script: Option<Handle<Script>>,
+    model: Option<Handle<ModelSource>>,
 }
 
 impl Default for NodeBuilder {
@@ -20,9 +23,10 @@ impl Default for NodeBuilder {
             name: "Unknown".to_string(),
             trs: Trs::default(),
             children: Vec::new(),
-            mesh: Handle::default(),
-            camera: Handle::default(),
-            script: Handle::default(),
+            mesh: None,
+            camera: None,
+            script: None,
+            model: None,
         }
     }
 }
@@ -44,17 +48,22 @@ impl NodeBuilder {
     }
 
     pub fn mesh(mut self, mesh: Handle<Mesh>) -> Self {
-        self.mesh = mesh;
+        self.mesh.replace(mesh);
         self
     }
 
     pub fn camera(mut self, camera: Handle<Camera>) -> Self {
-        self.camera = camera;
+        self.camera.replace(camera);
         self
     }
 
     pub fn script(mut self, script: Handle<Script>) -> Self {
-        self.script = script;
+        self.script.replace(script);
+        self
+    }
+
+    pub fn model(mut self, model: Handle<ModelSource>) -> Self {
+        self.model.replace(model);
         self
     }
 
@@ -66,19 +75,28 @@ impl NodeBuilder {
             mesh: self.mesh,
             camera: self.camera,
             script: self.script,
+            model: self.model,
             ..Default::default()
         }
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Node {
     pub name: String,
+
+    #[serde(flatten)]
     pub trs: Trs,
+
     pub children: Vec<Handle<Node>>,
-    pub mesh: Handle<Mesh>,
-    pub camera: Handle<Camera>,
-    pub script: Handle<Script>,
+
+    pub mesh: Option<Handle<Mesh>>,
+
+    pub camera: Option<Handle<Camera>>,
+
+    pub script: Option<Handle<Script>>,
+
+    pub model: Option<Handle<ModelSource>>,
 }
 
 impl Default for Node {
@@ -87,9 +105,10 @@ impl Default for Node {
             name: "Unknown".to_string(),
             trs: Trs::default(),
             children: Vec::new(),
-            mesh: Handle::default(),
-            camera: Handle::default(),
-            script: Handle::default(),
+            mesh: None,
+            camera: None,
+            script: None,
+            model: None,
         }
     }
 }
@@ -111,11 +130,14 @@ impl std::fmt::Display for Node {
             "{{ \"name\": \"{}\", \"translation\": {}, \"rotation\": {}, \"scale\": {}",
             self.name, self.trs.translation, self.trs.rotation, self.trs.scale
         )?;
-        if self.camera.is_valid() {
-            write!(f, ", \"camera\": {}", self.camera.id)?;
+        if let Some(camera) = &self.camera {
+            write!(f, ", \"camera\": {}", camera.id)?;
         }
-        if self.mesh.is_valid() {
-            write!(f, ", \"mesh\": {}", self.mesh.id)?;
+        if let Some(mesh) = &self.mesh {
+            write!(f, ", \"mesh\": {}", mesh.id)?;
+        }
+        if let Some(model) = &self.model {
+            write!(f, ", \"model\": {}", model.id)?;
         }
         if !self.children.is_empty() {
             write!(f, ", \"children\": [")?;

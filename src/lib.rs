@@ -11,6 +11,7 @@ mod mesh;
 mod model;
 mod node;
 mod primitive;
+mod scene;
 mod script;
 mod texture;
 
@@ -22,6 +23,7 @@ pub use mesh::*;
 pub use model::*;
 pub use node::*;
 pub use primitive::*;
+pub use scene::*;
 pub use script::*;
 pub use texture::*;
 

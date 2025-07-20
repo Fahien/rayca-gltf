@@ -1101,25 +1101,30 @@ dependencies = [
  "rayca-geometry",
  "rayca-math",
  "rayca-util",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
 name = "rayca-math"
 version = "0.1.0"
-source = "git+https://github.com/fahien/rayca-math.git#7c822bd2cd3763ae900f8a50cc65103f128de870"
+source = "git+https://github.com/fahien/rayca-math.git#436eb76571f14d3c936693e6c45dd1c38ab465d6"
 dependencies = [
  "num-traits",
  "rand",
  "serde",
+ "serde_json",
 ]
 
 [[package]]
 name = "rayca-util"
 version = "0.1.0"
-source = "git+https://github.com/fahien/rayca-util.git#7be78f38245f9df10e0c028fc322c493545ec791"
+source = "git+https://github.com/fahien/rayca-util.git#f31b100d8b95bd5b46bdbd0f5d78421fe18174d0"
 dependencies = [
  "instant",
  "owo-colors",
+ "serde",
+ "serde_json",
  "winit",
 ]
 

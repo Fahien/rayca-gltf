@@ -2,7 +2,7 @@
 // Author: Antonio Caggiano <info@antoniocaggiano.eu>
 // SPDX-License-Identifier: MIT
 
-use std::{collections::HashMap, error::Error, mem::offset_of, path::Path};
+use std::{collections::HashMap, error::Error, io::BufWriter, mem::offset_of, path::Path};
 
 use base64::Engine;
 use rayca_math::Trs;
@@ -574,13 +574,13 @@ impl Model {
         self.nodes
             .iter_mut()
             .rev()
-            .find(|node| node.camera.is_valid())
+            .find(|node| node.camera.is_some())
     }
 
-    /// Saves the model as a glTF file in the current working directory.
+    /// Stores the model as a glTF file in the current working directory.
     /// Two files will be named after the model's name with a `.gltf` extension
     /// and a `.bin` extension.
-    pub fn save_gltf<P: AsRef<Path>>(&self, dir: P) -> std::fmt::Result {
+    pub fn store_gltf_file<P: AsRef<Path>>(&self, dir: P) -> std::fmt::Result {
         let store_model = StoreModel::new(self);
 
         let bin_path = dir.as_ref().join(&store_model.buffer.uri);
@@ -645,8 +645,7 @@ impl Model {
 
         write!(&mut json_string, "}}")?;
 
-        let file_name = format!("{}.gltf", self.name);
-        let file_path = dir.as_ref().join(file_name);
+        let file_path = dir.as_ref().join(self.get_uri());
         std::fs::write(file_path, json_string).expect("Failed to write glTF file");
         Ok(())
     }
@@ -869,6 +868,24 @@ impl From<gltf::buffer::View<'_>> for BufferView {
     }
 }
 
+impl Scene {
+    pub fn load_glx_file<P: AsRef<Path>>(file_path: P) -> std::io::Result<Self> {
+        let uri = file_path.as_ref();
+        let file = std::fs::File::open(uri)?;
+        let reader = std::io::BufReader::new(file);
+        let scene = serde_json::from_reader(reader)?;
+        Ok(scene)
+    }
+
+    pub fn store_glx_file(&self) -> std::io::Result<()> {
+        let uri = self.get_uri();
+        let glx_file = std::fs::File::create(uri)?;
+        let stream = BufWriter::new(glx_file);
+        serde_json::to_writer_pretty(stream, self)?;
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod test {
     use crate::*;
@@ -897,5 +914,17 @@ mod test {
         let assets = Assets::new();
         let model = Model::load_gltf_path("tests/model/box/box-phong.gltf", &assets).unwrap();
         assert!(model.materials.len() == 1);
+    }
+
+    #[test]
+    fn store_scene() {
+        let mut scene = Scene::new("TestScene");
+        let hmodel = scene.models.push(ModelSource::new("TestModel"));
+        scene.nodes.push(Node::builder().model(hmodel).build());
+
+        scene.store_glx_file().expect("Failed to store scene");
+        let loaded_scene = Scene::load_glx_file("TestScene.glx").expect("Failed to load scene");
+        assert_eq!(scene.name, loaded_scene.name);
+        assert_eq!(scene.models[0].uri, loaded_scene.models[0].uri);
     }
 }

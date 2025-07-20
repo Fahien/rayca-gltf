@@ -35,7 +35,7 @@ impl Script {
     pub fn update(delta: f32, model: &mut Model, node: Handle<Node>) {
         let script_handle = model.nodes.get(node).unwrap().script;
 
-        if script_handle.is_valid() {
+        if let Some(script_handle) = script_handle {
             // Take function out for managing borrow checker
             let func_opt = model.scripts.get_mut(script_handle).unwrap().update.take();
             let func = func_opt.as_ref().unwrap();

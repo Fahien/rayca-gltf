@@ -2,10 +2,13 @@
 // Author: Antonio Caggiano <info@antoniocaggiano.eu>
 // SPDX-License-Identifier: MIT
 
+use std::path::PathBuf;
+
 use crate::*;
 
-// Model representation based on glTF spec
+/// Model representation based on glTF spec
 pub struct Model {
+    pub dir: PathBuf,
     pub name: String,
     pub scene: Node,
     pub buffers: Pack<Buffer>,
@@ -24,6 +27,7 @@ pub struct Model {
 impl Default for Model {
     fn default() -> Self {
         Self {
+            dir: PathBuf::from("."),
             name: "Unknown".to_string(),
             scene: Node::default(),
             buffers: Pack::default(),
@@ -46,6 +50,10 @@ impl Model {
         let mut model = Self::default();
         model.name = name.into();
         model
+    }
+
+    pub fn get_uri(&self) -> PathBuf {
+        self.dir.join(format!("{}.gltf", self.name))
     }
 
     pub fn find_image_handle_by_uri(&self, uri: &str) -> Handle<Image> {
