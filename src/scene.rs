@@ -2,8 +2,9 @@
 // Author: Antonio Caggiano <info@antoniocaggiano.eu>
 // SPDX-License-Identifier: MIT
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
+use bon::Builder;
 use serde::*;
 
 use crate::*;
@@ -11,8 +12,6 @@ use crate::*;
 /// Scene representation
 #[derive(Serialize, Deserialize)]
 pub struct Scene {
-    #[serde(skip)]
-    pub dir: PathBuf,
     pub name: String,
     pub nodes: Pack<Node>,
     pub models: Pack<ModelSource>,
@@ -22,7 +21,6 @@ pub struct Scene {
 impl Default for Scene {
     fn default() -> Self {
         Self {
-            dir: PathBuf::from("."),
             name: "Unknown".to_string(),
             nodes: Pack::default(),
             models: Pack::default(),
@@ -44,16 +42,12 @@ impl Scene {
         serde_json::from_str(&data).expect("Failed to load GLX file")
     }
 
-    pub fn get_uri(&self) -> PathBuf {
-        self.dir.join(format!("{}.glx", self.name))
-    }
-
     pub fn get_node(&self, handle: Handle<Node>) -> Option<&Node> {
         self.nodes.get(handle)
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Builder)]
 pub struct ModelSource {
     pub uri: String,
 }

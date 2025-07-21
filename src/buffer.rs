@@ -2,7 +2,9 @@
 // Author: Antonio Caggiano <info@antoniocaggiano.eu>
 // SPDX-License-Identifier: MIT
 
-use crate::*;
+use bon::Builder;
+
+use crate::{gltf_loader::StoreModel, *};
 
 #[derive(Default, Clone)]
 pub struct Buffer {
@@ -113,7 +115,7 @@ impl From<u32> for BufferViewTarget {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Builder)]
 pub struct Accessor {
     pub buffer_view: Handle<BufferView>,
 
@@ -128,6 +130,12 @@ pub struct Accessor {
 
     /// Specifies if the accessor’s elements are scalars, vectors, or matrices.
     pub accessor_type: AccessorType,
+
+    /// Optional minimum value for the accessor.
+    pub min: Option<String>,
+
+    /// Optional maximum value for the accessor.
+    pub max: Option<String>,
 }
 
 impl Accessor {
@@ -144,7 +152,49 @@ impl Accessor {
             component_type,
             count,
             accessor_type,
+            min: None,
+            max: None,
         }
+    }
+
+    pub fn get_bytes<'a>(&self, model: &'a StoreModel) -> &'a [u8] {
+        let view = model.buffer_views.get(self.buffer_view).unwrap();
+
+        let offset = view.offset + self.offset;
+        assert!(offset + view.size <= model.buffer.len());
+
+        &model.buffer.data[offset..offset + view.size]
+    }
+
+    pub fn get_stride(&self, model: &StoreModel) -> usize {
+        let view = model.buffer_views.get(self.buffer_view).unwrap();
+        if view.stride > 0 {
+            view.stride
+        } else {
+            self.component_type.get_size() * self.accessor_type.get_dimension_count()
+        }
+    }
+
+    pub fn as_slice<T>(&self, model: &StoreModel) -> Vec<&T> {
+        let data = self.get_bytes(model);
+        let stride = self.get_stride(model);
+        let dimension_count = self.accessor_type.get_dimension_count();
+        let component_size = self.component_type.get_size();
+
+        let t_size = std::mem::size_of::<T>();
+        assert_eq!(dimension_count * component_size, t_size);
+
+        let mut ret = vec![];
+
+        for i in 0..self.count {
+            let offset = i * stride;
+            assert!(offset < data.len());
+            let d = &data[offset..offset + t_size];
+            let elem: &T = unsafe { std::mem::transmute(d.as_ptr()) };
+            ret.push(elem);
+        }
+
+        ret
     }
 }
 
@@ -152,13 +202,22 @@ impl std::fmt::Display for Accessor {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{{ \"bufferView\": {}, \"byteOffset\": {}, \"componentType\": {}, \"count\": {}, \"type\": \"{}\" }}",
+            "{{ \"bufferView\": {}, \"byteOffset\": {}, \"componentType\": {}, \"count\": {}, \"type\": \"{}\"",
             self.buffer_view.id,
             self.offset,
             self.component_type as u32,
             self.count,
-            self.accessor_type
-        )
+            self.accessor_type,
+        )?;
+
+        if let Some(min_value) = &self.min {
+            write!(f, ", \"min\": {}", min_value)?;
+        }
+        if let Some(max_value) = &self.max {
+            write!(f, ", \"max\": {}", max_value)?;
+        }
+        write!(f, " }}")?;
+        Ok(())
     }
 }
 
@@ -207,6 +266,20 @@ pub enum AccessorType {
     Mat4,
 }
 
+impl AccessorType {
+    pub fn get_dimension_count(self) -> usize {
+        match self {
+            AccessorType::Scalar => 1,
+            AccessorType::Vec2 => 2,
+            AccessorType::Vec3 => 3,
+            AccessorType::Vec4 => 4,
+            AccessorType::Mat2 => 4,
+            AccessorType::Mat3 => 9,
+            AccessorType::Mat4 => 16,
+        }
+    }
+}
+
 impl std::fmt::Display for AccessorType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -217,6 +290,337 @@ impl std::fmt::Display for AccessorType {
             AccessorType::Mat2 => write!(f, "MAT2"),
             AccessorType::Mat3 => write!(f, "MAT3"),
             AccessorType::Mat4 => write!(f, "MAT4"),
+        }
+    }
+}
+
+pub trait AccessorOrd: Copy {
+    fn min_value() -> Self;
+    fn max_value() -> Self;
+
+    fn min(&self, other: &Self) -> Self;
+    fn max(&self, other: &Self) -> Self;
+}
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug)]
+pub struct AccessorVec2<T: Copy> {
+    pub x: T,
+    pub y: T,
+}
+
+impl<T: Copy + std::fmt::Display> std::fmt::Display for AccessorVec2<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "[{}, {}]", self.x, self.y)
+    }
+}
+
+impl AccessorOrd for AccessorVec2<f32> {
+    fn min_value() -> Self {
+        AccessorVec2 {
+            x: f32::MIN,
+            y: f32::MIN,
+        }
+    }
+
+    fn max_value() -> Self {
+        AccessorVec2 {
+            x: f32::MAX,
+            y: f32::MAX,
+        }
+    }
+
+    fn min(&self, other: &Self) -> Self {
+        AccessorVec2 {
+            x: self.x.min(other.x),
+            y: self.y.min(other.y),
+        }
+    }
+
+    fn max(&self, other: &Self) -> Self {
+        AccessorVec2 {
+            x: self.x.max(other.x),
+            y: self.y.max(other.y),
+        }
+    }
+}
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug)]
+pub struct AccessorVec3<T: Copy> {
+    pub x: T,
+    pub y: T,
+    pub z: T,
+}
+
+impl std::fmt::Display for AccessorVec3<f32> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "[{}, {}, {}]", self.x, self.y, self.z)
+    }
+}
+
+impl AccessorOrd for AccessorVec3<f32> {
+    fn min_value() -> Self {
+        AccessorVec3 {
+            x: f32::MIN,
+            y: f32::MIN,
+            z: f32::MIN,
+        }
+    }
+
+    fn max_value() -> Self {
+        AccessorVec3 {
+            x: f32::MAX,
+            y: f32::MAX,
+            z: f32::MAX,
+        }
+    }
+
+    fn min(&self, other: &Self) -> Self {
+        AccessorVec3 {
+            x: self.x.min(other.x),
+            y: self.y.min(other.y),
+            z: self.z.min(other.z),
+        }
+    }
+
+    fn max(&self, other: &Self) -> Self {
+        AccessorVec3 {
+            x: self.x.max(other.x),
+            y: self.y.max(other.y),
+            z: self.z.max(other.z),
+        }
+    }
+}
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug)]
+pub struct AccessorVec4<T: Copy> {
+    pub x: T,
+    pub y: T,
+    pub z: T,
+    pub w: T,
+}
+
+impl std::fmt::Display for AccessorVec4<f32> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "[{}, {}, {}, {}]", self.x, self.y, self.z, self.w)
+    }
+}
+
+impl AccessorOrd for AccessorVec4<f32> {
+    fn min_value() -> Self {
+        AccessorVec4 {
+            x: f32::MIN,
+            y: f32::MIN,
+            z: f32::MIN,
+            w: f32::MIN,
+        }
+    }
+
+    fn max_value() -> Self {
+        AccessorVec4 {
+            x: f32::MAX,
+            y: f32::MAX,
+            z: f32::MAX,
+            w: f32::MAX,
+        }
+    }
+
+    fn min(&self, other: &Self) -> Self {
+        AccessorVec4 {
+            x: self.x.min(other.x),
+            y: self.y.min(other.y),
+            z: self.z.min(other.z),
+            w: self.w.min(other.w),
+        }
+    }
+
+    fn max(&self, other: &Self) -> Self {
+        AccessorVec4 {
+            x: self.x.max(other.x),
+            y: self.y.max(other.y),
+            z: self.z.max(other.z),
+            w: self.w.max(other.w),
+        }
+    }
+}
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug)]
+pub struct AccessorMat2<T: Copy> {
+    pub row0: AccessorVec2<T>,
+    pub row1: AccessorVec2<T>,
+}
+
+impl std::fmt::Display for AccessorMat2<f32> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "[[{}, {}], [{}, {}]]",
+            self.row0.x, self.row0.y, self.row1.x, self.row1.y
+        )
+    }
+}
+
+impl AccessorOrd for AccessorMat2<f32> {
+    fn min_value() -> Self {
+        AccessorMat2 {
+            row0: AccessorVec2::min_value(),
+            row1: AccessorVec2::min_value(),
+        }
+    }
+
+    fn max_value() -> Self {
+        AccessorMat2 {
+            row0: AccessorVec2::max_value(),
+            row1: AccessorVec2::max_value(),
+        }
+    }
+
+    fn min(&self, other: &Self) -> Self {
+        AccessorMat2 {
+            row0: self.row0.min(&other.row0),
+            row1: self.row1.min(&other.row1),
+        }
+    }
+
+    fn max(&self, other: &Self) -> Self {
+        AccessorMat2 {
+            row0: self.row0.max(&other.row0),
+            row1: self.row1.max(&other.row1),
+        }
+    }
+}
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug)]
+pub struct AccessorMat3<T: Copy> {
+    pub row0: AccessorVec3<T>,
+    pub row1: AccessorVec3<T>,
+    pub row2: AccessorVec3<T>,
+}
+
+impl std::fmt::Display for AccessorMat3<f32> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "[[{}, {}, {}], [{}, {}, {}], [{}, {}, {}]]",
+            self.row0.x,
+            self.row0.y,
+            self.row0.z,
+            self.row1.x,
+            self.row1.y,
+            self.row1.z,
+            self.row2.x,
+            self.row2.y,
+            self.row2.z
+        )
+    }
+}
+
+impl AccessorOrd for AccessorMat3<f32> {
+    fn min_value() -> Self {
+        AccessorMat3 {
+            row0: AccessorVec3::min_value(),
+            row1: AccessorVec3::min_value(),
+            row2: AccessorVec3::min_value(),
+        }
+    }
+
+    fn max_value() -> Self {
+        AccessorMat3 {
+            row0: AccessorVec3::max_value(),
+            row1: AccessorVec3::max_value(),
+            row2: AccessorVec3::max_value(),
+        }
+    }
+
+    fn min(&self, other: &Self) -> Self {
+        AccessorMat3 {
+            row0: self.row0.min(&other.row0),
+            row1: self.row1.min(&other.row1),
+            row2: self.row2.min(&other.row2),
+        }
+    }
+
+    fn max(&self, other: &Self) -> Self {
+        AccessorMat3 {
+            row0: self.row0.max(&other.row0),
+            row1: self.row1.max(&other.row1),
+            row2: self.row2.max(&other.row2),
+        }
+    }
+}
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug)]
+pub struct AccessorMat4<T: Copy> {
+    pub row0: AccessorVec4<T>,
+    pub row1: AccessorVec4<T>,
+    pub row2: AccessorVec4<T>,
+    pub row3: AccessorVec4<T>,
+}
+
+impl std::fmt::Display for AccessorMat4<f32> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "[[{}, {}, {}, {}], [{}, {}, {}, {}], [{}, {}, {}, {}], [{}, {}, {}, {}]]",
+            self.row0.x,
+            self.row0.y,
+            self.row0.z,
+            self.row0.w,
+            self.row1.x,
+            self.row1.y,
+            self.row1.z,
+            self.row1.w,
+            self.row2.x,
+            self.row2.y,
+            self.row2.z,
+            self.row2.w,
+            self.row3.x,
+            self.row3.y,
+            self.row3.z,
+            self.row3.w
+        )
+    }
+}
+
+impl AccessorOrd for AccessorMat4<f32> {
+    fn min_value() -> Self {
+        AccessorMat4 {
+            row0: AccessorVec4::min_value(),
+            row1: AccessorVec4::min_value(),
+            row2: AccessorVec4::min_value(),
+            row3: AccessorVec4::min_value(),
+        }
+    }
+
+    fn max_value() -> Self {
+        AccessorMat4 {
+            row0: AccessorVec4::max_value(),
+            row1: AccessorVec4::max_value(),
+            row2: AccessorVec4::max_value(),
+            row3: AccessorVec4::max_value(),
+        }
+    }
+
+    fn min(&self, other: &Self) -> Self {
+        AccessorMat4 {
+            row0: self.row0.min(&other.row0),
+            row1: self.row1.min(&other.row1),
+            row2: self.row2.min(&other.row2),
+            row3: self.row3.min(&other.row3),
+        }
+    }
+
+    fn max(&self, other: &Self) -> Self {
+        AccessorMat4 {
+            row0: self.row0.max(&other.row0),
+            row1: self.row1.max(&other.row1),
+            row2: self.row2.max(&other.row2),
+            row3: self.row3.max(&other.row3),
         }
     }
 }

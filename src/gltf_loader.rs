@@ -687,10 +687,10 @@ impl std::fmt::Display for StorePrimitive {
 }
 
 #[derive(Default)]
-struct StoreModel {
+pub struct StoreModel {
     /// The main buffer will contain vertices and indices, this is going to be saved as `.bin`
-    buffer: Buffer,
-    buffer_views: Pack<BufferView>,
+    pub buffer: Buffer,
+    pub buffer_views: Pack<BufferView>,
     accessors: Pack<Accessor>,
     primitives: Pack<StorePrimitive>,
     meshes: Pack<Mesh>,
@@ -717,13 +717,25 @@ impl StoreModel {
 
             // Accessors are generated here
             let vertex_count = primitive.vertices.len();
-            let position_accessor = Accessor::new(
-                vertex_buffer_handle,
-                0,
-                ComponentType::F32,
-                vertex_count,
-                AccessorType::Vec3,
-            );
+            let mut position_accessor = Accessor::builder()
+                .buffer_view(vertex_buffer_handle)
+                .offset(0)
+                .component_type(ComponentType::F32)
+                .count(vertex_count)
+                .accessor_type(AccessorType::Vec3)
+                .build();
+
+            let positions: Vec<&AccessorVec3<f32>> = position_accessor.as_slice(&store_model);
+            use buffer::AccessorOrd;
+            let min_pos = positions
+                .iter()
+                .fold(AccessorVec3::<f32>::max_value(), |acc, &v| acc.min(v));
+            let max_pos = positions
+                .iter()
+                .fold(AccessorVec3::<f32>::min_value(), |acc, &v| acc.max(v));
+            position_accessor.min.replace(min_pos.to_string());
+            position_accessor.max.replace(max_pos.to_string());
+
             let position_accessor_handle = store_model.accessors.push(position_accessor);
             store_primitive
                 .attributes
@@ -877,8 +889,8 @@ impl Scene {
         Ok(scene)
     }
 
-    pub fn store_glx_file(&self) -> std::io::Result<()> {
-        let uri = self.get_uri();
+    pub fn store_glx_file<P: AsRef<Path>>(&self, dir: P) -> std::io::Result<()> {
+        let uri = dir.as_ref().join(format!("{}.glx", self.name));
         let glx_file = std::fs::File::create(uri)?;
         let stream = BufWriter::new(glx_file);
         serde_json::to_writer_pretty(stream, self)?;
@@ -922,8 +934,11 @@ mod test {
         let hmodel = scene.models.push(ModelSource::new("TestModel"));
         scene.nodes.push(Node::builder().model(hmodel).build());
 
-        scene.store_glx_file().expect("Failed to store scene");
-        let loaded_scene = Scene::load_glx_file("TestScene.glx").expect("Failed to load scene");
+        scene
+            .store_glx_file("target")
+            .expect("Failed to store scene");
+        let loaded_scene =
+            Scene::load_glx_file("target/TestScene.glx").expect("Failed to load scene");
         assert_eq!(scene.name, loaded_scene.name);
         assert_eq!(scene.models[0].uri, loaded_scene.models[0].uri);
     }
